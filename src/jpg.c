@@ -52,6 +52,12 @@
 
 void jpeg_dummy_dest (j_compress_ptr cinfo);
 
+static void jpeg_compress_image(FILE *outfile, image *image);
+static bitmap *jpeg_bitmap_from_coefficients(FILE *infile, int eval);
+static void jpeg_traverse_coeffs(j_decompress_ptr cinfo,
+				 jvirt_barray_ptr *coef_arrays,
+				 int write_mode);
+
 /* The functions that can be used to handle a JPEG data object */
 
 handler jpg_handler = {
@@ -288,6 +294,9 @@ finish_state(void)
 short
 steg_use_bit (unsigned short temp)
 {
+	if (jpeg_state == JPEG_DISABLED)
+		return temp;
+
   	if ((temp & 0x1) == temp)
 		goto steg_end;
 
@@ -420,41 +429,23 @@ extern int image_width;		/* Number of columns in image */
 bitmap *
 compress_JPEG (image *image)
 {
-  struct jpeg_compress_struct cinfo;
-  struct jpeg_error_mgr jerr;
-  /* More stuff */
-  JSAMPROW row_pointer[1];	/* pointer to JSAMPLE row[s] */
-  int row_stride;		/* physical row width in image buffer */
+  FILE *tmp;
+  bitmap *bmp;
 
-  init_state(JPEG_READING, steg_stat >= 3 ? 1 : 0, NULL);
-
-  cinfo.err = jpeg_std_error(&jerr);
-  jpeg_create_compress(&cinfo);
-
-  jpeg_dummy_dest(&cinfo);
-
-  cinfo.image_width = image->x; 	/* image width and height, in pixels */
-  cinfo.image_height = image->y;
-  cinfo.input_components = image->depth;/* # of color components per pixel */
-  cinfo.in_color_space = JCS_RGB; 	/* colorspace of input image */
-
-  jpeg_set_defaults(&cinfo);
-
-  jpeg_set_quality(&cinfo, quality, TRUE /* limit to baseline-JPEG values */);
-
-  jpeg_start_compress(&cinfo, TRUE);
-
-  row_stride = image->x * 3;	/* JSAMPLEs per row in image_buffer */
-
-  while (cinfo.next_scanline < cinfo.image_height) {
-    row_pointer[0] = & image->img[cinfo.next_scanline * row_stride];
-    (void) jpeg_write_scanlines(&cinfo, row_pointer, 1);
+  tmp = tmpfile();
+  if (tmp == NULL) {
+    fprintf(stderr, "compress_JPEG: tmpfile()\n");
+    exit(1);
   }
 
-  jpeg_finish_compress(&cinfo);
-  jpeg_destroy_compress(&cinfo);
+  jpeg_compress_image(tmp, image);
+  fflush(tmp);
+  rewind(tmp);
 
-  return finish_state();
+  bmp = jpeg_bitmap_from_coefficients(tmp, steg_stat >= 3 ? 1 : 0);
+  fclose(tmp);
+
+  return bmp;
 }
 
 /*
@@ -465,103 +456,52 @@ compress_JPEG (image *image)
 void
 write_JPEG_file (FILE *outfile, image *image)
 {
-  /* This struct contains the JPEG compression parameters and pointers to
-   * working space (which is allocated as needed by the JPEG library).
-   * It is possible to have several such structures, representing multiple
-   * compression/decompression processes, in existence at once.  We refer
-   * to any one struct (and its associated working data) as a "JPEG object".
-   */
-  struct jpeg_compress_struct cinfo;
-  /* This struct represents a JPEG error handler.  It is declared separately
-   * because applications often want to supply a specialized error handler
-   * (see the second half of this file for an example).  But here we just
-   * take the easy way out and use the standard error handler, which will
-   * print a message on stderr and call exit() if compression fails.
-   * Note that this struct must live as long as the main JPEG parameter
-   * struct, to avoid dangling-pointer problems.
-   */
-  struct jpeg_error_mgr jerr;
-  /* More stuff */
-  JSAMPROW row_pointer[1];	/* pointer to JSAMPLE row[s] */
-  int row_stride;		/* physical row width in image buffer */
+  struct jpeg_decompress_struct srcinfo;
+  struct jpeg_compress_struct dstinfo;
+  struct jpeg_error_mgr jsrcerr;
+  struct jpeg_error_mgr jdsterr;
+  jvirt_barray_ptr *coef_arrays;
+  FILE *tmp;
 
-  /* Step 1: allocate and initialize JPEG compression object */
-
-  /* We have to set up the error handler first, in case the initialization
-   * step fails.  (Unlikely, but it could happen if you are out of memory.)
-   * This routine fills in the contents of struct jerr, and returns jerr's
-   * address which we place into the link field in cinfo.
-   */
-  cinfo.err = jpeg_std_error(&jerr);
-  /* Now we can initialize the JPEG compression object. */
-  jpeg_create_compress(&cinfo);
-
-  /* Step 2: specify data destination (eg, a file) */
-  /* Note: steps 2 and 3 can be done in either order. */
-
-  /* Here we use the library-supplied code to send compressed data to a
-   * stdio stream.  You can also write your own code to do something else.
-   */
-  jpeg_stdio_dest(&cinfo, outfile);
-
-  /* Step 3: set parameters for compression */
-
-  /* First we supply a description of the input image.
-   * Four fields of the cinfo struct must be filled in:
-   */
-  cinfo.image_width = image->x; 	/* image width and height, in pixels */
-  cinfo.image_height = image->y;
-  cinfo.input_components = image->depth;/* # of color components per pixel */
-  cinfo.in_color_space = JCS_RGB; 	/* colorspace of input image */
-  /* Now use the library's routine to set default compression parameters.
-   * (You must set at least cinfo.in_color_space before calling this,
-   * since the defaults depend on the source color space.)
-   */
-  jpeg_set_defaults(&cinfo);
-  /* Now you can set any non-default parameters you wish to.
-   * Here we just illustrate the use of quality (quantization table) scaling:
-   */
-  jpeg_set_quality(&cinfo, quality, TRUE /* limit to baseline-JPEG values */);
-
-  /* Step 4: Start compressor */
-
-  /* TRUE ensures that we will write a complete interchange-JPEG file.
-   * Pass TRUE unless you are very sure of what you're doing.
-   */
-  jpeg_start_compress(&cinfo, TRUE);
-
-  /* Step 5: while (scan lines remain to be written) */
-  /*           jpeg_write_scanlines(...); */
-
-  /* Here we use the library's state variable cinfo.next_scanline as the
-   * loop counter, so that we don't have to keep track ourselves.
-   * To keep things simple, we pass one scanline per call; you can pass
-   * more if you wish, though.
-   */
-  row_stride = image->x * 3;	/* JSAMPLEs per row in image_buffer */
-
-  while (cinfo.next_scanline < cinfo.image_height) {
-    /* jpeg_write_scanlines expects an array of pointers to scanlines.
-     * Here the array is only one element long, but you could pass
-     * more than one scanline at a time if that's more convenient.
-     */
-    row_pointer[0] = & image->img[cinfo.next_scanline * row_stride];
-    (void) jpeg_write_scanlines(&cinfo, row_pointer, 1);
+  tmp = tmpfile();
+  if (tmp == NULL) {
+    fprintf(stderr, "write_JPEG_file: tmpfile()\n");
+    exit(1);
   }
 
-  /* Step 6: Finish compression */
+  jpeg_compress_image(tmp, image);
+  fflush(tmp);
+  rewind(tmp);
 
-  jpeg_finish_compress(&cinfo);
+  srcinfo.err = jpeg_std_error(&jsrcerr);
+  jpeg_create_decompress(&srcinfo);
+  jpeg_stdio_src(&srcinfo, tmp);
+  (void) jpeg_read_header(&srcinfo, TRUE);
+
+  coef_arrays = jpeg_read_coefficients(&srcinfo);
+  if (coef_arrays == NULL) {
+    fprintf(stderr, "write_JPEG_file: jpeg_read_coefficients()\n");
+    exit(1);
+  }
+
+  /* Apply the embedding bits directly to the quantized DCT coefficients. */
+  jpeg_traverse_coeffs(&srcinfo, coef_arrays, 1);
+
+  dstinfo.err = jpeg_std_error(&jdsterr);
+  jpeg_create_compress(&dstinfo);
+  jpeg_stdio_dest(&dstinfo, outfile);
+  jpeg_copy_critical_parameters(&srcinfo, &dstinfo);
+  jpeg_write_coefficients(&dstinfo, coef_arrays);
+
+  jpeg_finish_compress(&dstinfo);
+  jpeg_destroy_compress(&dstinfo);
+
+  (void) jpeg_finish_decompress(&srcinfo);
+  jpeg_destroy_decompress(&srcinfo);
+  fclose(tmp);
+
   /* After finish_compress, we can close the output file. */
   fclose(outfile);
-
-  /* Step 7: release JPEG compression object */
-
-  /* This is an important step since it will release a good deal of memory. */
-  jpeg_destroy_compress(&cinfo);
-
-  /* And we're done! */
-  finish_state();
 }
 
 
@@ -635,11 +575,51 @@ read_JPEG_file (FILE *infile)
   image *image;
   JSAMPARRAY buffer;		/* Output row buffer */
   int row_stride;		/* physical row width in output buffer */
-
-  init_state(JPEG_READING, 0, NULL);
+  int saved_state;
+  FILE *src;
+  FILE *tmp;
+  int seekable;
 
   image = checkedmalloc(sizeof(*image));
   memset(image, 0, sizeof(*image));
+
+  src = infile;
+  tmp = NULL;
+  seekable = (fseek(infile, 0, SEEK_CUR) == 0);
+  if (!seekable) {
+    char buf[8192];
+    size_t nread;
+
+    tmp = tmpfile();
+    if (tmp == NULL) {
+      fprintf(stderr, "read_JPEG_file: tmpfile()\n");
+      exit(1);
+    }
+
+    while ((nread = fread(buf, 1, sizeof(buf), infile)) > 0) {
+      if (fwrite(buf, 1, nread, tmp) != nread) {
+	fprintf(stderr, "read_JPEG_file: fwrite()\n");
+	exit(1);
+      }
+    }
+    if (ferror(infile)) {
+      fprintf(stderr, "read_JPEG_file: fread()\n");
+      exit(1);
+    }
+
+    src = tmp;
+  }
+
+  if (fseek(src, 0, SEEK_SET) != 0) {
+    fprintf(stderr, "read_JPEG_file: fseek()\n");
+    exit(1);
+  }
+
+  image->bitmap = jpeg_bitmap_from_coefficients(src, 0);
+  if (fseek(src, 0, SEEK_SET) != 0) {
+    fprintf(stderr, "read_JPEG_file: fseek()\n");
+    exit(1);
+  }
 
   /* Step 1: allocate and initialize JPEG decompression object */
 
@@ -649,7 +629,7 @@ read_JPEG_file (FILE *infile)
 
   /* Step 2: specify data source (eg, a file) */
 
-  jpeg_stdio_src(&cinfo, infile);
+  jpeg_stdio_src(&cinfo, src);
 
   /* Step 3: read file parameters with jpeg_read_header() */
 
@@ -667,6 +647,9 @@ read_JPEG_file (FILE *infile)
    */
 
   /* Step 5: Start decompressor */
+
+  saved_state = jpeg_state;
+  jpeg_state = JPEG_DISABLED;
 
   (void) jpeg_start_decompress(&cinfo);
   /* We can ignore the return value since suspension is not possible
@@ -718,13 +701,15 @@ read_JPEG_file (FILE *infile)
   /* We can ignore the return value since suspension is not possible
    * with the stdio data source.
    */
+  jpeg_state = saved_state;
 
   /* Step 8: Release JPEG decompression object */
 
   /* This is an important step since it will release a good deal of memory. */
   jpeg_destroy_decompress(&cinfo);
 
-  image->bitmap = finish_state();
+  if (tmp != NULL)
+    fclose(tmp);
 
   /* And we're done! */
   return image;
@@ -814,4 +799,115 @@ jpeg_dummy_dest (j_compress_ptr cinfo)
   dest->pub.init_destination = init_destination;
   dest->pub.empty_output_buffer = empty_output_buffer;
   dest->pub.term_destination = term_destination;
+}
+
+static void
+jpeg_traverse_coeffs(j_decompress_ptr cinfo, jvirt_barray_ptr *coef_arrays,
+		     int write_mode)
+{
+  JDIMENSION mcu_row, mcu_col;
+
+  for (mcu_row = 0; mcu_row < cinfo->total_iMCU_rows; mcu_row++) {
+    for (mcu_col = 0; mcu_col < cinfo->MCUs_per_row; mcu_col++) {
+      int ci;
+
+      for (ci = 0; ci < cinfo->num_components; ci++) {
+	jpeg_component_info *compptr = cinfo->comp_info + ci;
+	int mcu_width = compptr->MCU_width;
+	int mcu_height = compptr->MCU_height;
+	int useful_width = (mcu_col < cinfo->MCUs_per_row - 1) ?
+	  mcu_width : compptr->last_col_width;
+	int useful_height = (mcu_row < cinfo->total_iMCU_rows - 1) ?
+	  mcu_height : compptr->last_row_height;
+	int y, x, k;
+
+	for (y = 0; y < useful_height; y++) {
+	  JDIMENSION block_row = mcu_row * mcu_height + y;
+	  JBLOCKARRAY buffer = (*cinfo->mem->access_virt_barray)
+		((j_common_ptr) cinfo, coef_arrays[ci],
+		 block_row, 1, write_mode ? TRUE : FALSE);
+	  JBLOCKROW row = buffer[0];
+	  JDIMENSION block_col_base = mcu_col * mcu_width;
+
+	  for (x = 0; x < useful_width; x++) {
+	    JCOEFPTR block = row[block_col_base + x];
+
+	    for (k = 0; k < DCTSIZE2; k++) {
+	      if (write_mode)
+		block[k] = (JCOEF) steg_use_bit((unsigned short) block[k]);
+	      else
+		(void) steg_use_bit((unsigned short) block[k]);
+	    }
+	  }
+	}
+      }
+    }
+  }
+}
+
+static bitmap *
+jpeg_bitmap_from_coefficients(FILE *infile, int eval)
+{
+  struct jpeg_decompress_struct cinfo;
+  struct jpeg_error_mgr jerr;
+  jvirt_barray_ptr *coef_arrays;
+  bitmap *bmp;
+
+  init_state(JPEG_READING, eval, NULL);
+
+  cinfo.err = jpeg_std_error(&jerr);
+  jpeg_create_decompress(&cinfo);
+  jpeg_stdio_src(&cinfo, infile);
+  (void) jpeg_read_header(&cinfo, TRUE);
+
+  coef_arrays = jpeg_read_coefficients(&cinfo);
+  if (coef_arrays == NULL) {
+    fprintf(stderr, "jpeg_bitmap_from_coefficients: jpeg_read_coefficients()\n");
+    exit(1);
+  }
+
+  jpeg_traverse_coeffs(&cinfo, coef_arrays, 0);
+  bmp = finish_state();
+
+  (void) jpeg_finish_decompress(&cinfo);
+  jpeg_destroy_decompress(&cinfo);
+
+  return bmp;
+}
+
+static void
+jpeg_compress_image(FILE *outfile, image *image)
+{
+  struct jpeg_compress_struct cinfo;
+  struct jpeg_error_mgr jerr;
+  JSAMPROW row_pointer[1];
+  int row_stride;
+  int saved_state;
+
+  saved_state = jpeg_state;
+  jpeg_state = JPEG_DISABLED;
+
+  cinfo.err = jpeg_std_error(&jerr);
+  jpeg_create_compress(&cinfo);
+  jpeg_stdio_dest(&cinfo, outfile);
+
+  cinfo.image_width = image->x;
+  cinfo.image_height = image->y;
+  cinfo.input_components = image->depth;
+  cinfo.in_color_space = JCS_RGB;
+
+  jpeg_set_defaults(&cinfo);
+  jpeg_set_quality(&cinfo, quality, TRUE /* limit to baseline-JPEG values */);
+  jpeg_start_compress(&cinfo, TRUE);
+
+  row_stride = image->x * 3;
+  while (cinfo.next_scanline < cinfo.image_height) {
+    row_pointer[0] = &image->img[cinfo.next_scanline * row_stride];
+    (void) jpeg_write_scanlines(&cinfo, row_pointer, 1);
+  }
+
+  jpeg_finish_compress(&cinfo);
+  jpeg_destroy_compress(&cinfo);
+
+  jpeg_state = saved_state;
 }

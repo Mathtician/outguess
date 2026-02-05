@@ -51,6 +51,6 @@ extern handler jpg_handler;
 
 #define JPEG_READING	0
 #define JPEG_WRITING	1
+#define JPEG_DISABLED	2
 
 #endif /* _JPG_H */
-

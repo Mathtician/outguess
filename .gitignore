@@ -10,7 +10,7 @@
 /aclocal.m4
 /autom4te.cache
 /compile
-/confYz9x3v/
+/conf[A-Za-z]*/
 /config.guess
 /config.h.in
 /config.log
@@ -33,3 +33,4 @@
 /tests/*.trs
 /tests/*.log
 /tests/out.jpg
+/AGENTS.md
