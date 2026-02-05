@@ -134,6 +134,15 @@ make
 make install
 ```
 
+### Nix development shell
+
+If you use Nix, this repo provides a dev shell. The helper script below runs
+autotools, configure, build, and tests inside the shell:
+
+```
+scripts/nix-build.sh
+```
+
 ## Embedded modified JPEG library
 
 OutGuess needs a modified version of the JPEG library. Currently, the original
