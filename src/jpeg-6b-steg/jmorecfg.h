@@ -199,7 +199,7 @@ typedef unsigned int JDIMENSION;
 #ifdef HAVE_PROTOTYPES
 #define JMETHOD(type,methodname,arglist)  type (*methodname) arglist
 #else
-#define JMETHOD(type,methodname,arglist)  type (*methodname) ()
+#define JMETHOD(type,methodname,arglist)  type (*methodname) arglist
 #endif
 
 
