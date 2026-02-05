@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2015-2020 Joao Eriberto Mota Filho <eriberto@eriberto.pro.br>
 # Create a manpage using txt2man command. Version 2.0, 2020-06-19.
