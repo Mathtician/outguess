@@ -16,18 +16,49 @@ AC_PROG_CPP
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 AC_PROG_RANLIB
+PKG_PROG_PKG_CONFIG
 
-# Check for jconfig.h in jpeg dir
-jpegdir="src/jpeg-6b-steg"
+AC_ARG_WITH([system-libjpeg],
+            AS_HELP_STRING([--with-system-libjpeg],
+                           [Use system libjpeg (libjpeg-turbo)]),
+            [use_system_libjpeg=$withval],
+            [use_system_libjpeg=no])
 
 AC_ARG_WITH([generic-jconfig],
-            [Use a default jconfig.h in src/{jpegdir}],
-            AC_CONFIG_COMMANDS([jconfig.h], [cd $jpegdir; cp jconfig.cfg jconfig.h], [jpegdir=$jpegdir]),
-            AC_CHECK_FILE([$jpegdir]/jconfig.h, [],
-                AC_MSG_ERROR(m4_normalize([Could not find jconfig.h in [$jpegdir]/.
-                             Please provide a jconfig.h file or pass --with-generic-jconfig
-                             to `configure' command to use a generic file.
-                             See [$jpegdir]/install.doc for details.]))))
+            AS_HELP_STRING([--with-generic-jconfig],
+                           [Use a default jconfig.h in src/{jpegdir}]),
+            [use_generic_jconfig=$withval],
+            [use_generic_jconfig=no])
+
+JPEG_CFLAGS=""
+JPEG_LIBS=""
+
+if test "x$use_system_libjpeg" = "xyes"; then
+   PKG_CHECK_MODULES([JPEG], [libjpeg],
+                     [],
+                     [AC_MSG_ERROR([libjpeg not found via pkg-config])])
+   AC_CHECK_LIB([jpeg], [jpeg_read_coefficients], [],
+                [AC_MSG_ERROR([libjpeg missing jpeg_read_coefficients])])
+   AC_DEFINE([USE_SYSTEM_LIBJPEG], [1], [Use system libjpeg])
+else
+   # Check for jconfig.h in jpeg dir
+   jpegdir="src/jpeg-6b-steg"
+   if test "x$use_generic_jconfig" = "xyes"; then
+      AC_CONFIG_COMMANDS([jconfig.h],
+                         [cd $jpegdir; cp jconfig.cfg jconfig.h],
+                         [jpegdir=$jpegdir])
+   else
+      AC_CHECK_FILE([$jpegdir]/jconfig.h, [],
+          AC_MSG_ERROR(m4_normalize([Could not find jconfig.h in [$jpegdir]/.
+                       Please provide a jconfig.h file or pass --with-generic-jconfig
+                       to `configure' command to use a generic file.
+                       See [$jpegdir]/install.doc for details.])))
+   fi
+fi
+
+AM_CONDITIONAL([USE_SYSTEM_LIBJPEG], [test "x$use_system_libjpeg" = "xyes"])
+AC_SUBST([JPEG_CFLAGS])
+AC_SUBST([JPEG_LIBS])
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h malloc.h netinet/in.h stddef.h stdlib.h string.h strings.h unistd.h])

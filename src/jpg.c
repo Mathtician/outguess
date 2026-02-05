@@ -45,10 +45,14 @@
 #include "config.h"
 #include "outguess.h"
 #include "pnm.h"
+#ifdef USE_SYSTEM_LIBJPEG
+#include <jpeglib.h>
+#include <jmorecfg.h>
+#else
 #include "jpeg-6b-steg/jpeglib.h"
-#include "jpg.h"
-
 #include "jpeg-6b-steg/jmorecfg.h"
+#endif
+#include "jpg.h"
 
 void jpeg_dummy_dest (j_compress_ptr cinfo);
 
