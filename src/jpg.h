@@ -35,6 +35,8 @@
 #define JPG_THRES_LOW	0x04
 #define JPG_THRES_MIN	0x03
 
+struct og_jpeg_marker;
+
 void init_JPEG_handler(char *parameters);
 
 int preserve_jpg(bitmap *, int);
@@ -46,6 +48,7 @@ void bitmap_from_jpg(bitmap *bitmap, image *image, int flags);
 void bitmap_to_jpg(image *image, bitmap *bitmap, int flags);
 
 bitmap *compress_JPEG(image *image);
+void jpeg_markers_free(struct og_jpeg_marker *markers);
 
 extern handler jpg_handler;
 

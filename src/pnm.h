@@ -39,6 +39,8 @@
 #define PNM_THRES_MAX	0xf0
 #define PNM_THRES_MIN	0x10
 
+struct og_jpeg_marker;
+
 /*
  * This is our raw data object, also used to create JPG or other
  * encoded output.
@@ -49,6 +51,7 @@ typedef struct _image {
 	u_char *img;
 	bitmap *bitmap;
 	int flags;
+	struct og_jpeg_marker *jpeg_markers;
 } image;
 
 typedef struct _handler {

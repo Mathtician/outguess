@@ -32,3 +32,4 @@
 /tests/*.log
 /tests/out.jpg
 /AGENTS.md
+/tmp

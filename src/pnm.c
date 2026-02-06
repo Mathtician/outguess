@@ -47,6 +47,7 @@
 #include "config.h"
 #include "outguess.h"
 #include "pnm.h"
+#include "jpg.h"
 
 /* The functions that can be used to handle a PNM data object */
 
@@ -279,6 +280,7 @@ write_pnm(FILE *fout, image *image)
 void
 free_pnm(image *image)
 {
+	jpeg_markers_free(image->jpeg_markers);
 	free(image->img);
 	free(image);
 }

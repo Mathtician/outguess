@@ -49,6 +49,78 @@
 #include <jmorecfg.h>
 #include "jpg.h"
 
+struct og_jpeg_marker {
+	int marker;
+	unsigned int data_len;
+	unsigned char *data;
+	struct og_jpeg_marker *next;
+};
+
+static int
+jpeg_marker_is_icc(jpeg_saved_marker_ptr marker)
+{
+	static const unsigned char icc_id[] = "ICC_PROFILE";
+	const size_t icc_id_len = sizeof(icc_id) - 1;
+
+	if (marker->marker != (JPEG_APP0 + 2))
+		return 0;
+	if (marker->data_length < icc_id_len + 3)
+		return 0;
+	if (memcmp(marker->data, icc_id, icc_id_len) != 0)
+		return 0;
+	return marker->data[icc_id_len] == '\0';
+}
+
+static struct og_jpeg_marker *
+jpeg_markers_copy_icc(struct jpeg_decompress_struct *cinfo)
+{
+	struct og_jpeg_marker *head = NULL;
+	struct og_jpeg_marker **tail = &head;
+	jpeg_saved_marker_ptr marker;
+
+	for (marker = cinfo->marker_list; marker != NULL; marker = marker->next) {
+		struct og_jpeg_marker *node;
+
+		if (!jpeg_marker_is_icc(marker))
+			continue;
+
+		node = checkedmalloc(sizeof(*node));
+		node->marker = marker->marker;
+		node->data_len = marker->data_length;
+		node->data = checkedmalloc(node->data_len);
+		memcpy(node->data, marker->data, node->data_len);
+		node->next = NULL;
+
+		*tail = node;
+		tail = &node->next;
+	}
+
+	return head;
+}
+
+static void
+jpeg_markers_write(struct jpeg_compress_struct *cinfo,
+		   struct og_jpeg_marker *markers)
+{
+	struct og_jpeg_marker *marker;
+
+	for (marker = markers; marker != NULL; marker = marker->next)
+		jpeg_write_marker(cinfo, marker->marker, marker->data,
+				  marker->data_len);
+}
+
+void
+jpeg_markers_free(struct og_jpeg_marker *markers)
+{
+	while (markers != NULL) {
+		struct og_jpeg_marker *next = markers->next;
+
+		free(markers->data);
+		free(markers);
+		markers = next;
+	}
+}
+
 void jpeg_dummy_dest (j_compress_ptr cinfo);
 
 static void jpeg_compress_image(FILE *outfile, image *image);
@@ -491,6 +563,8 @@ write_JPEG_file (FILE *outfile, image *image)
   jpeg_stdio_dest(&dstinfo, outfile);
   jpeg_copy_critical_parameters(&srcinfo, &dstinfo);
   jpeg_write_coefficients(&dstinfo, coef_arrays);
+  if (image->jpeg_markers != NULL)
+    jpeg_markers_write(&dstinfo, image->jpeg_markers);
 
   jpeg_finish_compress(&dstinfo);
   jpeg_destroy_compress(&dstinfo);
@@ -632,7 +706,9 @@ read_JPEG_file (FILE *infile)
 
   /* Step 3: read file parameters with jpeg_read_header() */
 
+  jpeg_save_markers(&cinfo, JPEG_APP0 + 2, 0xFFFF);
   (void) jpeg_read_header(&cinfo, TRUE);
+  image->jpeg_markers = jpeg_markers_copy_icc(&cinfo);
   /* We can ignore the return value from jpeg_read_header since
    *   (a) suspension is not possible with the stdio data source, and
    *   (b) we passed TRUE to reject a tables-only JPEG file as an error.
