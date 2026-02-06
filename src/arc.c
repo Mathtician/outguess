@@ -78,8 +78,7 @@ arc4_getbyte(struct arc4_stream *as)
 }
 
 u_int32_t
-arc4_getword(as)
-	struct arc4_stream *as;
+arc4_getword(struct arc4_stream *as)
 {
 	u_int32_t val;
 	val = arc4_getbyte(as) << 24;
@@ -120,4 +119,3 @@ arc4_initkey(struct arc4_stream *as, char *type, u_char *key, int keylen)
   arc4_init(as);
   arc4_addrandom(as, digest, 16);
 }
-
