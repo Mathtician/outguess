@@ -14,6 +14,5 @@ distclean-local:
 	rm -rf autom4te.cache \
                conf[a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9]
 	rm -f  aclocal.m4 compile config.* configure depcomp install-sh \
-               Makefile.in missing src/Makefile.in src/jpeg-6b-steg/config.log \
-               src/jpeg-6b-steg/config.status src/jpeg-6b-steg/jconfig.h test-driver \
+               Makefile.in missing src/Makefile.in test-driver \
                tests/Makefile.in

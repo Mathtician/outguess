@@ -86,50 +86,16 @@ If you are interested in helping OutGuess, read the [CONTRIBUTING.md](CONTRIBUTI
 
 ## Building
 
-### Prepare the `jpeg-6b-steg` library
-
-To do so, you need to choose (and potentially edit) an appropriate `jconfig.h`
-file. To get an idea which one you might want, have a look at their header
-comments.
-
-You might do so like this (POSIX only):
-
-```
-head -n 1 src/jpeg-6b-steg/jconfig.*
-```
-
-The default one is `jconfig.cfg`. You may use it like this:
-
-```
-cd jpeg-6b-steg
-ln -s jconfig.cfg jconfig.h
-cd ..
-```
-
-However, in OutGuess 0.3 or newer, there is the option `--with-generic-jconfig`
-that will use `jconfig.cfg` automatically. See the *Build and install OutGuess*
-section below.
-
 ### Build and install OutGuess
 
 OutGuess has only been tested on OpenBSD, Linux, Solaris and AIX.
 
-If you manually edited `jconfig.h`, you must use the following command
-sequence:
+OutGuess expects a system libjpeg with coefficient APIs (libjpeg-turbo). Make
+sure the libjpeg development package is available.
 
 ```
 ./autogen.sh
 ./configure
-make
-make install
-```
-
-Otherwise, if you prefer to use `jconfig.cfg` content as default for
-`jconfig.h`, without a manual action, you can use the following sequence:
-
-```
-./autogen.sh
-./configure --with-generic-jconfig
 make
 make install
 ```
@@ -143,20 +109,6 @@ autotools, configure, build, and tests inside the shell:
 scripts/nix-build.sh
 ```
 
-## Embedded modified JPEG library
-
-OutGuess needs a modified version of the JPEG library. Currently, the original
-lib (without changes) is available at https://www.ijg.org/files/. The tarball
-name for version 6b is `jpegsrc.v6b.tar.gz` (or `jpegsr6b.zip`).
-
-There is a complete document about the JPEG in
-`src/jpeg-<version>-steg/install.doc` in OutGuess source code (this is plain
-text, not a traditional
-*.doc*).
-
-The .diff file used to modify the original JPEG library is available at `/doc`
-in OutGuess source code.
-
 ## Acknowledgments
 
 OutGuess uses code from the following projects.
@@ -164,8 +116,7 @@ Attributions can also be found in the sources.
 
 * Markus Kuhn's Stirmark software,
   see [doc/STIRMARK-README](STIRMARK-README)
-* the Independent JPEG Group's JPEG software,
-  see [src/jpeg-6b-steg/README](src/jpeg-6b-steg/README)
+* the libjpeg software (libjpeg-turbo)
 * the Arc4 random number generator for OpenBSD, (C) 1996 by
   David Mazieres <dm@lcs.mit.edu>
 * free MD5 code by Colin Plumb

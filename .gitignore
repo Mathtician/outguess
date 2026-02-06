@@ -4,7 +4,6 @@
 /config.h
 /config.cache
 /config.status
-/src/jpeg-6b-steg/jconfig.h
 /outguess
 /Makefile.in
 /aclocal.m4
@@ -24,7 +23,6 @@
 /src/Makefile.in
 /src/**/*.o
 /src/histogram
-/src/jpeg-6b-steg/libjpeg.a
 /src/outguess
 /stamp-h1
 /test-driver
@@ -33,5 +31,4 @@
 /tests/*.trs
 /tests/*.log
 /tests/out.jpg
-/tests/.cross-backend/
 /AGENTS.md

@@ -4,12 +4,15 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
-configure_flags="${CONFIGURE_FLAGS:---with-generic-jconfig}"
+configure_flags=()
+if [ -n "${CONFIGURE_FLAGS-}" ]; then
+	read -r -a configure_flags <<< "${CONFIGURE_FLAGS}"
+fi
 run_tests="${RUN_TESTS:-1}"
 
 run_build() {
 	./autogen.sh
-	./configure ${configure_flags}
+	./configure "${configure_flags[@]}"
 	make -C src
 	if [ "$run_tests" != "0" ]; then
 		make -C tests check
