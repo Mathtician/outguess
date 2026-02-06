@@ -33,4 +33,5 @@
 /tests/*.trs
 /tests/*.log
 /tests/out.jpg
+/tests/.cross-backend/
 /AGENTS.md
