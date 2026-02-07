@@ -1,0 +1,19 @@
+---
+BasedOnStyle: LLVM
+IndentWidth: 8
+TabWidth: 8
+UseTab: ForIndentation
+ContinuationIndentWidth: 8
+BreakBeforeBraces: Linux
+AlwaysBreakAfterDefinitionReturnType: TopLevel
+IndentCaseLabels: false
+PointerAlignment: Right
+DerivePointerAlignment: false
+AlignAfterOpenBracket: DontAlign
+SpaceBeforeParens: ControlStatements
+SortIncludes: false
+IndentPPDirectives: None
+ColumnLimit: 80
+ReflowComments: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortBlocksOnASingleLine: Never

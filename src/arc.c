@@ -55,7 +55,7 @@
 void
 arc4_init(struct arc4_stream *as)
 {
-	int     n;
+	int n;
 
 	for (n = 0; n < 256; n++)
 		as->s[n] = n;
@@ -91,31 +91,31 @@ arc4_getword(struct arc4_stream *as)
 void
 arc4_addrandom(struct arc4_stream *as, u_char *dat, int datlen)
 {
-        int     n;
-        u_int8_t si;
+	int n;
+	u_int8_t si;
 
-        as->i--;
-        for (n = 0; n < 256; n++) {
-                as->i = (as->i + 1);
-                si = as->s[as->i];
-                as->j = (as->j + si + dat[n % datlen]);
-                as->s[as->i] = as->s[as->j];
-                as->s[as->j] = si;
-        }
+	as->i--;
+	for (n = 0; n < 256; n++) {
+		as->i = (as->i + 1);
+		si = as->s[as->i];
+		as->j = (as->j + si + dat[n % datlen]);
+		as->s[as->i] = as->s[as->j];
+		as->s[as->j] = si;
+	}
 }
 
 void
 arc4_initkey(struct arc4_stream *as, char *type, u_char *key, int keylen)
 {
-  MD5_CTX ctx;
-  u_char digest[16];
+	MD5_CTX ctx;
+	u_char digest[16];
 
-  /* Bah, we want bcrypt */
-  MD5Init(&ctx);
-  MD5Update(&ctx, type, strlen(type));
-  MD5Update(&ctx, key, keylen);
-  MD5Final(digest, &ctx);
+	/* Bah, we want bcrypt */
+	MD5Init(&ctx);
+	MD5Update(&ctx, type, strlen(type));
+	MD5Update(&ctx, key, keylen);
+	MD5Final(digest, &ctx);
 
-  arc4_init(as);
-  arc4_addrandom(as, digest, 16);
+	arc4_init(as);
+	arc4_addrandom(as, digest, 16);
 }

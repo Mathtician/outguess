@@ -73,5 +73,5 @@ void
 iterator_adapt(iterator *iter, bitmap *bitmap, int datalen)
 {
 	iter->skipmod = SKIPADJ(bitmap->bits, bitmap->bits - iter->off) *
-		(bitmap->bits - iter->off)/(8 * datalen);
+	                (bitmap->bits - iter->off) / (8 * datalen);
 }

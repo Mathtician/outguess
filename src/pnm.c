@@ -52,14 +52,14 @@
 /* The functions that can be used to handle a PNM data object */
 
 handler pnm_handler = {
-	"ppm",
-	"pnm",
-	init_pnm,
-	read_pnm,
-	write_pnm,
-	bitmap_from_pnm,
-	bitmap_to_pnm,
-	preserve_pnm,
+        "ppm",
+        "pnm",
+        init_pnm,
+        read_pnm,
+        write_pnm,
+        bitmap_from_pnm,
+        bitmap_to_pnm,
+        preserve_pnm,
 };
 
 void
@@ -70,8 +70,8 @@ init_pnm(char *parameter)
 int
 preserve_pnm(bitmap *bitmap, int off)
 {
-    if (off == -1)
-	    bitmap->preserve = preserve_pnm;
+	if (off == -1)
+		bitmap->preserve = preserve_pnm;
 
 	return (-1);
 }
@@ -83,9 +83,11 @@ skip_white(FILE *f)
 	int c;
 
 	do {
-		while (isspace(c = getc(f)));
+		while (isspace(c = getc(f)))
+			;
 		if (c == '#')
-			while ((c = getc(f)) != '\n' && c != EOF);
+			while ((c = getc(f)) != '\n' && c != EOF)
+				;
 		else {
 			ungetc(c, f);
 			return;
@@ -101,14 +103,14 @@ bitmap_to_pnm(image *image, bitmap *bitmap, int flags)
 	u_char *img = image->img;
 
 	off = 0;
-	for (i = 0; i < bitmap->bits; ) {
+	for (i = 0; i < bitmap->bits;) {
 		tmp = bitmap->bitmap[off++];
 		for (j = 0; j < 8 && i < bitmap->bits; j++) {
 			if ((flags & STEG_MARK) && TEST_BIT(bitmap->locked, i))
 				img[i] = 255;
 
 			img[i] = (img[i] & ~(1 << BITSHIFT)) |
-				((tmp & 1) << BITSHIFT);
+			         ((tmp & 1) << BITSHIFT);
 			i++;
 			tmp >>= 1;
 		}
@@ -138,10 +140,10 @@ bitmap_from_pnm(bitmap *bitmap, image *image, int flags)
 	bitmap->detect = checkedmalloc(bitmap->bits);
 	bitmap->data = checkedmalloc(bitmap->bits);
 
-	memset (bitmap->locked, 0, bitmap->bytes);
+	memset(bitmap->locked, 0, bitmap->bytes);
 
 	off = 0;
-	for (i = 0; i < bitmap->bits; ) {
+	for (i = 0; i < bitmap->bits;) {
 		tmp = 0;
 		for (j = 0; j < 8 && i < bitmap->bits; j++) {
 			/* Weight image modifications */
@@ -160,7 +162,6 @@ bitmap_from_pnm(bitmap *bitmap, image *image, int flags)
 	}
 }
 
-
 image *
 read_pnm(FILE *fin)
 {
@@ -171,9 +172,10 @@ read_pnm(FILE *fin)
 	image = checkedmalloc(sizeof(*image));
 	memset(image, 0, sizeof(*image));
 
-	const char* const getsRet = fgets(magic, 10, fin);
+	const char *const getsRet = fgets(magic, 10, fin);
 	if (getsRet == NULL) {
-		fprintf(stderr, "Failed to read the magic value of the image!\n");
+		fprintf(stderr,
+		        "Failed to read the magic value of the image!\n");
 		fprintf(stderr, "This suggest either an I/O error, ");
 		fprintf(stderr, "or that the file is invalid.\n");
 		exit(1);
@@ -202,37 +204,39 @@ read_pnm(FILE *fin)
 	}
 	getc(fin);
 	if (image->max > 255 || image->max <= 0 || image->x <= 1 ||
-	    image->y <= 1) {
+	        image->y <= 1) {
 		fprintf(stderr, "Unsupported value range!\n");
 		exit(1);
 	}
 
 	switch (magic[1]) {
-	case '2': /* PGM ASCII */
-	case '5': /* PGM binary */
+	case '2':                 /* PGM ASCII */
+	case '5':                 /* PGM binary */
 		image->depth = 1; /* up to 8 bit/pixel */
 		break;
-	case '3': /* PPM ASCII */
-	case '6': /* PPM binary */
+	case '3':                 /* PPM ASCII */
+	case '6':                 /* PPM binary */
 		image->depth = 3; /* up to 24 bit/pixel */
 		break;
 	default:
-		fprintf(stderr, "Unsupported input file type 'P%c'!\n", magic[1]);
+		fprintf(stderr, "Unsupported input file type 'P%c'!\n",
+		        magic[1]);
 		exit(1);
 	}
 
-	image->img = (unsigned char *) checkedmalloc(sizeof(unsigned char) *
-						     image->x * image->y *
-						     image->depth);
+	image->img = (unsigned char *)checkedmalloc(
+	        sizeof(unsigned char) * image->x * image->y * image->depth);
 
 	switch (magic[1]) {
 	case '2': /* PGM ASCII */
 	case '3': /* PPM ASCII */
-		for (size_t i = 0; i < image->x * image->y * image->depth; i++) {
+		for (size_t i = 0; i < image->x * image->y * image->depth;
+		        i++) {
 			skip_white(fin);
 			nScanned = fscanf(fin, "%d", &v);
 			if (nScanned != 1) {
-				fprintf(stderr, "Failed to read image pixel value!\n");
+				fprintf(stderr,
+				        "Failed to read image pixel value!\n");
 				exit(1);
 			}
 			if (v < 0 || v > image->max) {
@@ -244,9 +248,8 @@ read_pnm(FILE *fin)
 		break;
 	case '5': /* PGM binary */
 	case '6': /* PPM binary */
-		if (fread(image->img, image->x * image->depth, image->y, fin)
-				!= image->y)
-		{
+		if (fread(image->img, image->x * image->depth, image->y, fin) !=
+		        image->y) {
 			fprintf(stderr, "Failed to read PPM image data!\n");
 			fprintf(stderr, "This suggest either an I/O error, ");
 			fprintf(stderr, "or that the file is invalid.\n");
@@ -270,11 +273,11 @@ read_pnm(FILE *fin)
 void
 write_pnm(FILE *fout, image *image)
 {
-	fprintf(fout, "P%d\n%d %d\n%d\n", image->depth == 1 ? 5 : 6,
-		image->x, image->y, image->max);
+	fprintf(fout, "P%d\n%d %d\n%d\n", image->depth == 1 ? 5 : 6, image->x,
+	        image->y, image->max);
 
-	fwrite(image->img, image->x*image->y*image->depth, sizeof(u_char),
-	       fout);
+	fwrite(image->img, image->x * image->y * image->depth, sizeof(u_char),
+	        fout);
 }
 
 void

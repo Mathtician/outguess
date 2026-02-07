@@ -34,23 +34,22 @@
 
 /* if depth > 1 */
 int
-split_colors(u_char **pred, u_char **pgreen, u_char **pblue,
-	     u_char *img,
-	     int xdim, int ydim, int depth)
+split_colors(u_char **pred, u_char **pgreen, u_char **pblue, u_char *img,
+        int xdim, int ydim, int depth)
 {
 	int i, j;
 	u_char *red, *green, *blue;
 
 	/* Split to red - blue */
-	red = checkedmalloc(ydim*xdim);
-	green = checkedmalloc(ydim*xdim);
-	blue = checkedmalloc(ydim*xdim);
+	red = checkedmalloc(ydim * xdim);
+	green = checkedmalloc(ydim * xdim);
+	blue = checkedmalloc(ydim * xdim);
 
 	for (i = 0; i < ydim; i++) {
 		for (j = 0; j < xdim; j++) {
-			red[j + xdim*i] = img[0 + depth*(j + xdim*i)];
-			green[j + xdim*i] = img[1 + depth*(j + xdim*i)];
-			blue[j + xdim*i] = img[2 + depth*(j + xdim*i)];
+			red[j + xdim * i] = img[0 + depth * (j + xdim * i)];
+			green[j + xdim * i] = img[1 + depth * (j + xdim * i)];
+			blue[j + xdim * i] = img[2 + depth * (j + xdim * i)];
 		}
 	}
 
@@ -64,7 +63,7 @@ split_colors(u_char **pred, u_char **pgreen, u_char **pblue,
 void
 fft_image(int xdim, int ydim, int depth, u_char *img)
 {
-	int i,j;
+	int i, j;
 	u_char *red, *green, *blue;
 	fftw_complex *c, *d, *e;
 	double maxre, maxim, maxmod;
@@ -84,46 +83,49 @@ fft_image(int xdim, int ydim, int depth, u_char *img)
 
 	for (i = 0; i < ydim; i++) {
 		for (j = 0; j < xdim; j++) {
-			img[0 + depth*(j + xdim*i)] = red[j + xdim*i];
-			img[1 + depth*(j + xdim*i)] = green[j + xdim*i];
-			img[2 + depth*(j + xdim*i)] = blue[j + xdim*i];
+			img[0 + depth * (j + xdim * i)] = red[j + xdim * i];
+			img[1 + depth * (j + xdim * i)] = green[j + xdim * i];
+			img[2 + depth * (j + xdim * i)] = blue[j + xdim * i];
 		}
 	}
 
-	free(red); free(green); free(blue);
+	free(red);
+	free(green);
+	free(blue);
 }
 
 void
-fft_visible(int xdim, int ydim, fftw_complex *c, u_char *img,
-	    double maxre, double maxim, double maxmod)
+fft_visible(int xdim, int ydim, fftw_complex *c, u_char *img, double maxre,
+        double maxim, double maxmod)
 {
 	int i, j, ind;
 	double contrast, scale, factor, total, val;
 
-	contrast = exp((-100.5) * log(xdim*ydim) / 256);
-	factor = - 255.0;
+	contrast = exp((-100.5) * log(xdim * ydim) / 256);
+	factor = -255.0;
 	total = 0;
 	scale = factor / log1p(maxmod * contrast * contrast);
 
-	printf("Visible: max (%f/%f/%f), contrast: %f, scale: %f\n",
-	       maxre, maxim, maxmod, contrast, scale);
+	printf("Visible: max (%f/%f/%f), contrast: %f, scale: %f\n", maxre,
+	        maxim, maxmod, contrast, scale);
 
-	for (i = 0; i < xdim ; i++)
+	for (i = 0; i < xdim; i++)
 		for (j = 0; j < ydim; j++) {
-			ind = j*xdim + i;
-			val = total - scale*log1p(contrast*contrast*
-						(c[ind].re*c[ind].re +
-						 c[ind].im*c[ind].im));
+			ind = j * xdim + i;
+			val = total -
+			      scale * log1p(contrast * contrast *
+			                      (c[ind].re * c[ind].re +
+			                              c[ind].im * c[ind].im));
 			img[ind] = val;
 		}
 }
 
 fftw_complex *
-fft_transform(int xdim, int ydim, unsigned char *data,
-	       double *mre, double *mim, double *mmod)
+fft_transform(int xdim, int ydim, unsigned char *data, double *mre, double *mim,
+        double *mmod)
 {
 	rfftwnd_plan p;
-	int i,j, ind, di;
+	int i, j, ind, di;
 	double maxre, maxim, maxmod, val;
 	fftw_complex *a;
 
@@ -131,13 +133,13 @@ fft_transform(int xdim, int ydim, unsigned char *data,
 
 	a = checkedmalloc(xdim * ydim * sizeof(fftw_complex));
 
-	p = fftw2d_create_plan(ydim, xdim, FFTW_FORWARD,
-			       FFTW_ESTIMATE | FFTW_IN_PLACE);
+	p = fftw2d_create_plan(
+	        ydim, xdim, FFTW_FORWARD, FFTW_ESTIMATE | FFTW_IN_PLACE);
 
 	di = 1;
 	for (j = 0; j < ydim; j++) {
 		int dj = di;
-		for (i = 0; i < xdim ; i++) {
+		for (i = 0; i < xdim; i++) {
 			ind = i + j * xdim;
 			a[ind].re = data[ind] * dj;
 			a[ind].im = 0.0;
@@ -151,15 +153,18 @@ fft_transform(int xdim, int ydim, unsigned char *data,
 	maxim = *mim;
 	maxre = *mre;
 	maxmod = *mmod;
-	for (i = 0; i < xdim ; i++)
+	for (i = 0; i < xdim; i++)
 		for (j = 0; j < ydim; j++) {
-			ind = j*xdim + i;
+			ind = j * xdim + i;
 
 			/* Update Stats */
-			if (fabs(a[ind].re) > maxre) maxre = fabs(a[ind].re);
-			if (fabs(a[ind].im) > maxim) maxim = fabs(a[ind].im);
+			if (fabs(a[ind].re) > maxre)
+				maxre = fabs(a[ind].re);
+			if (fabs(a[ind].im) > maxim)
+				maxim = fabs(a[ind].im);
 			val = a[ind].re * a[ind].re + a[ind].im * a[ind].im;
-			if (val > maxmod) maxmod = val;
+			if (val > maxmod)
+				maxmod = val;
 		}
 	*mim = maxim;
 	*mre = maxre;
@@ -179,16 +184,16 @@ fft_filter(int xdim, int ydim, fftw_complex *data)
 	fprintf(stderr, "Starting complex filtering\n");
 
 	for (j = 0; j < ydim; j++) {
-		for (i = 0; i < xdim ; i++) {
+		for (i = 0; i < xdim; i++) {
 			ind = i + j * xdim;
-			val = sqrt((xdim/2-i)*(xdim/2-i) +
-				   (ydim/2-j)*(ydim/2-j));
+			val = sqrt((xdim / 2 - i) * (xdim / 2 - i) +
+			           (ydim / 2 - j) * (ydim / 2 - j));
 			if (val > 15) {
-				data[ind].re = 2*data[ind].re;
-				data[ind].im = 2*data[ind].im;
+				data[ind].re = 2 * data[ind].re;
+				data[ind].im = 2 * data[ind].im;
 			} else {
-				data[ind].re = 0.2*data[ind].re;
-				data[ind].im = 0.2*data[ind].im;
+				data[ind].re = 0.2 * data[ind].re;
+				data[ind].im = 0.2 * data[ind].im;
 			}
 		}
 	}
@@ -198,7 +203,7 @@ u_char *
 fft_transform_back(int xdim, int ydim, fftw_complex *data)
 {
 	rfftwnd_plan p;
-	int i,j, ind;
+	int i, j, ind;
 	fftw_real dj, val;
 	u_char *a;
 
@@ -206,17 +211,18 @@ fft_transform_back(int xdim, int ydim, fftw_complex *data)
 
 	a = checkedmalloc(xdim * ydim * sizeof(u_char));
 
-	p = fftw2d_create_plan(ydim, xdim, FFTW_BACKWARD,
-			       FFTW_ESTIMATE | FFTW_IN_PLACE);
+	p = fftw2d_create_plan(
+	        ydim, xdim, FFTW_BACKWARD, FFTW_ESTIMATE | FFTW_IN_PLACE);
 
 	fftwnd_one(p, data, NULL);
 
 	dj = (xdim * ydim);
 	for (j = 0; j < ydim; j++) {
-		for (i = 0; i < xdim ; i++) {
+		for (i = 0; i < xdim; i++) {
 			ind = i + j * xdim;
 			val = sqrt(data[ind].re * data[ind].re +
-				   data[ind].im * data[ind].im)/dj;
+			              data[ind].im * data[ind].im) /
+			      dj;
 			a[ind] = val;
 		}
 	}

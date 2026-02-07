@@ -30,11 +30,11 @@ histogram_simple(u_char *data, int bits)
 			zero++;
 
 	fprintf(stdout, "Bits: %6d\n", bits);
-	fprintf(stdout, "One:  %6d, %f\n", one, (float)one/bits);
-	fprintf(stdout, "Zero: %6d, %f\n", zero, (float)zero/bits);
+	fprintf(stdout, "One:  %6d, %f\n", one, (float)one / bits);
+	fprintf(stdout, "Zero: %6d, %f\n", zero, (float)zero / bits);
 }
 
-#define MAXRUNLEN	25
+#define MAXRUNLEN 25
 
 void
 histogram_runlen(u_char *data, int bits)
@@ -61,8 +61,8 @@ histogram_runlen(u_char *data, int bits)
 	buckets[count]++;
 
 	for (i = 1; i < MAXRUNLEN; i++) {
-		fprintf(stdout, "%3d:  %6d, %f\n",
-			i, buckets[i], (float)buckets[i]/bits);
+		fprintf(stdout, "%3d:  %6d, %f\n", i, buckets[i],
+		        (float)buckets[i] / bits);
 	}
 }
 
