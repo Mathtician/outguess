@@ -274,7 +274,7 @@ preserve_jpg(bitmap *bitmap, int off)
 					i - 127, dctfreq[i]);
 		}
 
-		bitmap->maxcorrect = res;
+		bitmap->maxcorrect = (res < 0) ? 0 : (size_t)res;
 		return (res);
 	} else if (off >= bitmap->bits) {
 		/* Reached end of image */
